@@ -44,10 +44,19 @@ export const automationScript = `
   window.setDateField = function(dateISO) {
     console.log('[BOT] Setting date field to:', dateISO);
     
+    // Convert YYYY-MM-DD to DD-MM-YYYY format
+    let dateFormatted = dateISO;
+    const dateMatch = dateISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (dateMatch) {
+      const [, year, month, day] = dateMatch;
+      dateFormatted = day + '-' + month + '-' + year;
+      console.log('[BOT] >>> Date converted to DD-MM-YYYY:', dateFormatted);
+    }
+    
     // Try to find date input by ID
     const dateInputById = document.querySelector('#txttanggal');
     if (dateInputById) {
-      dateInputById.value = dateISO;
+      dateInputById.value = dateFormatted;
       dateInputById.dispatchEvent(new Event('input', { bubbles: true }));
       dateInputById.dispatchEvent(new Event('change', { bubbles: true }));
       console.log('[BOT] ✓ Date set via ID');
@@ -57,7 +66,7 @@ export const automationScript = `
     // Try to find by name
     const dateInputByName = document.querySelector('input[name="tanggal"]');
     if (dateInputByName) {
-      dateInputByName.value = dateISO;
+      dateInputByName.value = dateFormatted;
       dateInputByName.dispatchEvent(new Event('input', { bubbles: true }));
       dateInputByName.dispatchEvent(new Event('change', { bubbles: true }));
       console.log('[BOT] ✓ Date set via name');
@@ -71,7 +80,7 @@ export const automationScript = `
         const dateInput = label.closest('.form-group')?.querySelector('input[type="date"]') ||
                          label.parentElement?.querySelector('input[type="date"]');
         if (dateInput) {
-          dateInput.value = dateISO;
+          dateInput.value = dateFormatted;
           dateInput.dispatchEvent(new Event('input', { bubbles: true }));
           dateInput.dispatchEvent(new Event('change', { bubbles: true }));
           console.log('[BOT] ✓ Date set via label');
