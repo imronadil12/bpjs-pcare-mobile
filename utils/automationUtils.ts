@@ -10,30 +10,65 @@ export function withTimeout(promise: Promise<any>, ms: number, label: string) {
   ]);
 }
 
-// Simulate automation logic that would run in WebView
-// Based on actual PCARE Chrome extension structure
+// Format ISO date to DD-MM-YYYY format (matching extension approach)
+function formatISODateForDisplay(isoDateStr: string): string {
+  try {
+    const date = new Date(isoDateStr);
+    const day = String(date.getUTCDate()).padStart(2, '0');
+    const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+    const year = date.getUTCFullYear();
+    return `${day}-${month}-${year}`;
+  } catch {
+    return isoDateStr;
+  }
+}
+
+// Advanced automation script with extension-like features
 export const automationScript = `
-  console.log('[BOT] Script injected');
+  console.log('[BOT] Script injected - Advanced Bot v2');
   
+  // Performance optimization: Cache DOM queries
+  const selectorCache = {};
+  
+  // Advanced automation state management
   window.automationState = {
     running: false,
     paused: false,
     currentIndex: 0,
+    currentDate: null,
     currentNumber: null,
     totalNumbers: 0,
+    errorCount: 0,
+    successCount: 0,
+    maxRetries: 3,
   };
 
-  window.sendProgress = function(status, done, total, currentNumber) {
+  // Cached query selector for performance
+  window.cachedQuery = function(selector, forceRefresh = false) {
+    if (!forceRefresh && selectorCache[selector]) {
+      return selectorCache[selector];
+    }
+    const result = document.querySelector(selector);
+    selectorCache[selector] = result;
+    return result;
+  };
+
+  // Send progress with detailed info matching extension
+  window.sendProgress = function(status, done, total, currentNumber, currentDate) {
     try {
       window.ReactNativeWebView?.postMessage(JSON.stringify({
         type: 'PROGRESS',
         status,
         done,
         total,
-        currentNumber
+        currentNumber,
+        currentDate,
+        timestamp: Date.now(),
+        errorCount: window.automationState.errorCount,
+        successCount: window.automationState.successCount
       }));
     } catch (e) {
-      console.log('[BOT] Progress error:', e);
+      console.error('[BOT] Progress error:', e);
     }
   };
 
@@ -41,192 +76,295 @@ export const automationScript = `
     return new Promise(r => setTimeout(r, ms));
   };
 
+  // Format ISO date to DD-MM-YYYY (matching extension)
+  window.formatISODateForDisplay = function(isoDateStr) {
+    try {
+      const date = new Date(isoDateStr);
+      const day = String(date.getUTCDate()).padStart(2, '0');
+      const month = String(date.getUTCMonth() + 1).padStart(2, '0');
+      const year = date.getUTCFullYear();
+      return day + '-' + month + '-' + year;
+    } catch (e) {
+      console.warn('[BOT] Date format error:', e);
+      return isoDateStr;
+    }
+  };
+
   window.setDateField = function(dateISO) {
     console.log('[BOT] Setting date field to:', dateISO);
     
-    // Convert YYYY-MM-DD to DD-MM-YYYY format
-    let dateFormatted = dateISO;
-    const dateMatch = dateISO.match(/^(\d{4})-(\d{2})-(\d{2})$/);
-    if (dateMatch) {
-      const [, year, month, day] = dateMatch;
-      dateFormatted = day + '-' + month + '-' + year;
-      console.log('[BOT] >>> Date converted to DD-MM-YYYY:', dateFormatted);
-    }
+    // Convert YYYY-MM-DD to DD-MM-YYYY format (robust Date parsing)
+    const dateFormatted = window.formatISODateForDisplay(dateISO);
     
-    // Try to find date input by ID
-    const dateInputById = document.querySelector('#txttanggal');
+    // Try cached ID first
+    const dateInputById = window.cachedQuery('#txttanggal', true);
     if (dateInputById) {
+      dateInputById.value = '';
+      dateInputById.focus();
       dateInputById.value = dateFormatted;
       dateInputById.dispatchEvent(new Event('input', { bubbles: true }));
       dateInputById.dispatchEvent(new Event('change', { bubbles: true }));
-      console.log('[BOT] ✓ Date set via ID');
+      console.log('[BOT] Date set via ID:', dateFormatted);
       return true;
     }
     
-    // Try to find by name
-    const dateInputByName = document.querySelector('input[name="tanggal"]');
+    // Try by name
+    const dateInputByName = window.cachedQuery('input[name="tanggal"]', true);
     if (dateInputByName) {
+      dateInputByName.value = '';
+      dateInputByName.focus();
       dateInputByName.value = dateFormatted;
       dateInputByName.dispatchEvent(new Event('input', { bubbles: true }));
       dateInputByName.dispatchEvent(new Event('change', { bubbles: true }));
-      console.log('[BOT] ✓ Date set via name');
+      console.log('[BOT] Date set via name:', dateFormatted);
       return true;
     }
     
-    // Try to find by label
-    const labels = document.querySelectorAll('label');
-    for (let label of labels) {
-      if (label.innerText && (label.innerText.includes('Tanggal') || label.innerText.includes('tanggal'))) {
-        const dateInput = label.closest('.form-group')?.querySelector('input[type="date"]') ||
-                         label.parentElement?.querySelector('input[type="date"]');
-        if (dateInput) {
-          dateInput.value = dateFormatted;
-          dateInput.dispatchEvent(new Event('input', { bubbles: true }));
-          dateInput.dispatchEvent(new Event('change', { bubbles: true }));
-          console.log('[BOT] ✓ Date set via label');
-          return true;
-        }
+    console.error('[BOT] Date field not found');
+    return false;
+  };
+  // Clear popups and modals
+  window.clearPopups = function() {
+    document.querySelectorAll('.bootbox.modal, .modal-backdrop').forEach(e => e.remove());
+    document.body.classList.remove('modal-open');
+    console.log('[BOT] ✓ Cleared popups');
+  };
+
+  // Handle Update NIK modal
+  window.handleUpdateNIKModal = async function() {
+    await window.sleep(400);
+    const modal = document.querySelector('#updateNIK_modal');
+    if (!modal) return;
+    
+    const cancelBtn = modal.querySelector('#batalNIKSubmit_btn');
+    if (cancelBtn) {
+      cancelBtn.click();
+      console.log('[BOT] ✓ Closed NIK modal');
+    }
+    await window.sleep(300);
+  };
+
+  // Select form options (matching extension)
+  window.selectOptions = async function() {
+    // Click Kunjungan Sehat
+    try {
+      window.clickRadio('Kunjungan Sehat');
+      console.log('[BOT] Selected Kunjungan Sehat');
+    } catch (e) {
+      console.warn('[BOT] Kunjungan Sehat not found:', e);
+    }
+
+    // Click Rawat Jalan
+    try {
+      window.clickRadio('Rawat Jalan');
+      console.log('[BOT] Selected Rawat Jalan');
+    } catch (e) {
+      console.warn('[BOT] Rawat Jalan not found:', e);
+    }
+
+    // Set Poli to 021
+    try {
+      const poli = document.querySelector('#poli');
+      if (poli) {
+        poli.value = '021';
+        poli.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log('[BOT] Set poli to 021');
       }
+    } catch (e) {
+      console.warn('[BOT] Poli field not found:', e);
+    }
+
+    // Click Save button
+    try {
+      const saveBtn = document.querySelector('#btnSimpanPendaftaran');
+      if (saveBtn) {
+        saveBtn.click();
+        console.log('[BOT] Clicked Save button');
+      }
+    } catch (e) {
+      console.error('[BOT] Error clicking save:', e);
+    }
+  };
+
+  window.clickRadio = function(text) {
+    const label = [...document.querySelectorAll('label')]
+      .find(l => l.innerText && l.innerText.includes(text));
+    
+    if (!label) {
+      console.warn('[BOT] Label "' + text + '" not found');
+      return;
     }
     
-    console.log('[BOT] Date field not found');
-    return false;
+    const radio = label.querySelector('input');
+    if (!radio) {
+      console.warn('[BOT] Radio input for "' + text + '" not found');
+      return;
+    }
+    
+    radio.click();
+    console.log('[BOT] Clicked radio:', text);
   };
 
   window.inputNoPencarian = async function(nomor) {
-    console.log('[BOT] Entering number:', nomor);
+    // Strategy 1: Find by label "No. Pencarian" (matches extension exactly)
+    const label = [...document.querySelectorAll('label')]
+      .find(l => l.innerText && l.innerText.includes('No. Pencarian'));
     
-    // Strategy 1: Find by label "No. Pencarian"
-    const labels = document.querySelectorAll('label');
-    for (let label of labels) {
-      if (label.innerText && label.innerText.includes('Pencarian')) {
-        const input = label.closest('.form-group')?.querySelector('input') || 
-                     label.parentElement?.querySelector('input');
-        if (input) {
-          console.log('[BOT] Found by label');
-          input.value = '';
-          input.focus();
-          input.value = nomor;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        }
-      }
-    }
-    
-    // Strategy 2: Try common input selectors
-    const selectors = [
-      'input[name*="pencarian" i]',
-      'input[name*="nomor" i]',
-      'input[id*="pencarian" i]',
-      'input[type="text"]:not([readonly])',
-    ];
-    
-    for (let selector of selectors) {
-      const inputs = document.querySelectorAll(selector);
-      for (let input of inputs) {
-        if (input.offsetParent !== null && !input.disabled && input.type !== 'date') {
-          const name = (input.name || '').toLowerCase();
-          const id = (input.id || '').toLowerCase();
-          if (name.includes('tanggal') || id.includes('tanggal')) continue;
-          
-          console.log('[BOT] Found by selector:', selector);
-          input.value = nomor;
-          input.dispatchEvent(new Event('input', { bubbles: true }));
-          input.dispatchEvent(new Event('change', { bubbles: true }));
-          return true;
-        }
-      }
-    }
-    
-    console.log('[BOT] ERROR: Could not find input field');
-    return false;
-  };
-
-  window.clickCari = function() {
-    console.log('[BOT] Looking for Cari button');
-    const buttons = document.querySelectorAll('button, input[type="button"]');
-    for (let btn of buttons) {
-      if (btn.innerText && btn.innerText.trim() === 'Cari') {
-        console.log('[BOT] Clicked Cari');
-        btn.click();
+    if (label) {
+      const input = label.closest('.form-group')?.querySelector('input') || 
+                   label.parentElement?.querySelector('input');
+      if (input) {
+        input.value = '';
+        input.focus();
+        input.value = nomor;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log('[BOT] Number entered via label:', nomor);
         return true;
       }
     }
-    console.log('[BOT] Cari button not found');
-    return false;
+    
+    // Strategy 2: Try fallback selectors
+    const selectors = ['input[name="txtnomor"]', 'input[name="nomor"]', '#txtnomor'];
+    for (let selector of selectors) {
+      const input = document.querySelector(selector);
+      if (input && input.offsetParent !== null && !input.disabled) {
+        input.value = '';
+        input.focus();
+        input.value = nomor;
+        input.dispatchEvent(new Event('input', { bubbles: true }));
+        input.dispatchEvent(new Event('change', { bubbles: true }));
+        console.log('[BOT] Number entered via selector:', selector);
+        return true;
+      }
+    }
+    
+    console.error('[BOT] No. Pencarian input not found');
+    throw 'No. Pencarian not found';
   };
 
-  window.startAutomation = async function(numbers, date, delay, startIdx) {
-    console.log('[BOT] START: numbers=' + numbers.length + ', date=' + date + ', delay=' + delay);
+  window.clickCari = function() {
+    // Find button by exact text match (matching extension)
+    const button = [...document.querySelectorAll('button')]
+      .find(b => b.innerText && b.innerText.trim() === 'Cari');
+    
+    if (!button) {
+      console.error('[BOT] Cari button not found');
+      throw 'Cari button not found';
+    }
+    
+    button.click();
+    console.log('[BOT] Clicked Cari button');
+    return true;
+  };
+
+  window.startAutomation = async function(numbers, dates, delay, startIdx = 0, dateIndex = 0, dateGoals = {}) {
+    console.log('[BOT] START: numbers=' + numbers.length + ', dates=' + dates.length + ', delay=' + delay);
     
     window.automationState.running = true;
     window.automationState.paused = false;
     window.automationState.totalNumbers = numbers.length;
 
-    // Set date field once at the beginning
-    if (date) {
-      console.log('[BOT] Setting date to:', date);
-      window.setDateField(date);
-      await window.sleep(300);
+    // Ensure dates is an array
+    const datesToProcess = Array.isArray(dates) ? dates : [dates];
+    if (!datesToProcess.length) {
+      console.error('[BOT] No dates provided');
+      return;
     }
 
-    for (let i = startIdx; i < numbers.length; i++) {
+    // Process each date
+    for (let dateIdx = dateIndex; dateIdx < datesToProcess.length; dateIdx++) {
       if (!window.automationState.running) {
         console.log('[BOT] STOPPED');
         break;
       }
-      
-      if (window.automationState.paused) {
-        console.log('[BOT] PAUSED');
-        await new Promise(r => {
-          const chk = setInterval(() => {
-            if (!window.automationState.paused) {
-              clearInterval(chk);
-              r(null);
-            }
-          }, 100);
-        });
+
+      const currentDate = datesToProcess[dateIdx];
+      const goal = dateGoals[currentDate] || numbers.length;
+      let index = dateIdx === dateIndex ? startIdx : 0;
+
+      console.log('[BOT] Processing date:', currentDate, '| Goal:', goal, '| Start:', index);
+      window.automationState.currentDate = currentDate;
+      window.sendProgress('Setting date', 0, goal, '-', currentDate);
+
+      // Set date field
+      window.setDateField(currentDate);
+      await window.sleep(delay);
+
+      // Process numbers for this date
+      for (; index < numbers.length && index < goal; index++) {
+        // Check for pause
+        if (window.automationState.paused) {
+          console.log('[BOT] PAUSED at number ' + (index + 1));
+          window.sendProgress('Paused', index, goal, numbers[index], currentDate);
+          window.automationState.running = false;
+          return;
+        }
+
+        if (!window.automationState.running) {
+          console.log('[BOT] STOPPED');
+          return;
+        }
+
+        const nomor = numbers[index];
+        console.log('[BOT] [' + (index + 1) + '/' + goal + '] Processing:', nomor);
+        window.automationState.currentNumber = nomor;
+        window.automationState.currentIndex = index;
+        window.sendProgress('Processing', index, goal, nomor, currentDate);
+
+        try {
+          // Clear popups
+          window.clearPopups();
+          await window.sleep(200);
+
+          // Input number
+          const inputted = await window.inputNoPencarian(nomor);
+          if (!inputted) {
+            throw 'Failed to input number';
+          }
+          await window.sleep(delay);
+
+          // Click Cari
+          const found = window.clickCari();
+          if (!found) {
+            throw 'Cari button not found';
+          }
+          await window.sleep(delay);
+
+          // Handle modals
+          await window.handleUpdateNIKModal();
+          await window.sleep(200);
+
+          // Select form options
+          await window.selectOptions();
+          await window.sleep(delay * 2);
+
+          // Update success
+          window.automationState.successCount++;
+          console.log('[BOT] ✓ [' + (index + 1) + '/' + goal + '] Success:', nomor);
+          window.sendProgress('Success', index + 1, goal, nomor, currentDate);
+
+        } catch (error) {
+          window.automationState.errorCount++;
+          console.error('[BOT] ✗ [' + (index + 1) + '/' + goal + '] Error:', nomor, error);
+          window.sendProgress('Error', index + 1, goal, nomor, currentDate);
+          await window.sleep(delay);
+        }
       }
 
-      const num = numbers[i];
-      console.log('[BOT] [' + (i + 1) + '/' + numbers.length + ']: ' + num);
-      window.sendProgress('Processing', i + 1, numbers.length, num);
-
-      try {
-        // Clear any popups
-        document.querySelectorAll('.bootbox.modal, .modal-backdrop').forEach(e => e.remove());
-        
-        // Input the number
-        const inputted = await window.inputNoPencarian(num);
-        if (!inputted) {
-          console.log('[BOT] Failed to input');
-          window.sendProgress('Error', i + 1, numbers.length, 'Failed to input');
-          await window.sleep(delay);
-          continue;
-        }
-        
-        await window.sleep(300);
-        
-        // Click Cari button
-        const cariClicked = window.clickCari();
-        if (!cariClicked) {
-          console.log('[BOT] Cari button not found');
-        }
-        
-        await window.sleep(delay);
-        console.log('[BOT] ✓ Entry ' + (i + 1) + ' complete');
-        window.sendProgress('Filled', i + 1, numbers.length, num);
-      } catch (error) {
-        console.error('[BOT] Error:', error);
-        window.sendProgress('Error', i + 1, numbers.length, String(error));
-        await window.sleep(delay);
+      // Check if goal reached for this date
+      if (index >= goal && dateIdx + 1 < datesToProcess.length) {
+        console.log('[BOT] Goal reached for date ' + currentDate + '. Moving to next date...');
+        window.sendProgress('Next date', goal, goal, '-', currentDate);
+        await window.sleep(1000);
       }
     }
 
+    // All dates processed
+    console.log('[BOT] ✓ AUTOMATION COMPLETE');
+    console.log('[BOT] Summary: ' + window.automationState.successCount + ' success, ' + window.automationState.errorCount + ' errors');
+    window.sendProgress('Completed', window.automationState.successCount, numbers.length, '-', 'Done');
     window.automationState.running = false;
-    console.log('[BOT] COMPLETED');
-    window.sendProgress('Completed', numbers.length, numbers.length, 'Done');
   };
 
   window.pauseAutomation = function() {

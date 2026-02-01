@@ -26,7 +26,13 @@ const convertToDisplayFormat = (yyyymmdd: string): string => {
 };
 
 const DatePicker = () => {
-  const { dates, dateGoals, addDate, removeDate } = useContext(AutomationContext);
+  const context = useContext(AutomationContext);
+  
+  if (!context) {
+    return null;
+  }
+
+  const { dates, dateGoals, addDate, removeDate } = context;
   const [selectedDate, setSelectedDate] = useState('');
   const [goal, setGoal] = useState('');
 

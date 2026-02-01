@@ -4,24 +4,31 @@ import { WebView } from 'react-native-webview';
 import { AutomationContext } from '@/context/AutomationContext';
 
 interface ControlButtonsProps {
-  webViewRef: React.RefObject<WebView>;
+  webViewRef: React.RefObject<WebView | null>;
 }
 
 const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
-  const { 
-    startAutomation, 
-    pauseAutomation, 
-    resumeAutomation, 
-    stopAutomation, 
+  const context = useContext(AutomationContext);
+  
+  if (!context) {
+    return null;
+  }
+
+  const {
+    startAutomation,
+    pauseAutomation,
+    resumeAutomation,
+    stopAutomation,
     nextDate,
     isRunning,
     isPaused,
     numbers,
     dates,
+    dateGoals,
     delayMs,
     startIndex,
     dateIndex
-  } = useContext(AutomationContext);
+  } = context;
 
   const handleStart = () => {
     if (!numbers || numbers.length === 0) {
@@ -32,24 +39,25 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
       alert('Please add dates first');
       return;
     }
-    
+
     startAutomation();
-    
+
     if (webViewRef?.current) {
-      const currentDate = dates[dateIndex] || dates[0];
       const script = `
         (function() {
-          console.log('[BOT] Starting automation with ' + ${JSON.stringify(numbers)}.length + ' numbers');
+          console.log('[BOT] Starting automation with ' + ${JSON.stringify(numbers)}.length + ' numbers on ' + ${JSON.stringify(dates)}.length + ' dates');
           if (typeof window.startAutomation !== 'function') {
             console.error('[BOT] ERROR: startAutomation function not found!');
             return;
           }
           setTimeout(() => {
             window.startAutomation(
-              ${JSON.stringify(numbers)}, 
-              '${currentDate}', 
-              ${delayMs}, 
-              ${startIndex}
+              ${JSON.stringify(numbers)},
+              ${JSON.stringify(dates)},
+              ${delayMs},
+              ${startIndex},
+              ${dateIndex},
+              ${JSON.stringify(dateGoals)}
             );
           }, 100);
         })();
@@ -85,7 +93,7 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
 
   return (
     <View style={styles.container}>
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.button, styles.startBtn, isRunning && styles.disabled]}
         onPress={handleStart}
         disabled={isRunning}
@@ -93,7 +101,7 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
         <Text style={styles.buttonText}>▶ Start</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.button, styles.pauseBtn, (!isRunning || isPaused) && styles.disabled]}
         onPress={handlePause}
         disabled={!isRunning || isPaused}
@@ -101,7 +109,7 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
         <Text style={styles.buttonText}>⏸ Pause</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.button, styles.resumeBtn, (!isRunning || !isPaused) && styles.disabled]}
         onPress={handleResume}
         disabled={!isRunning || !isPaused}
@@ -109,14 +117,14 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
         <Text style={styles.buttonText}>▶️ Resume</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.button, styles.stopBtn]}
         onPress={handleStop}
       >
         <Text style={styles.buttonText}>⏹ Stop</Text>
       </TouchableOpacity>
 
-      <TouchableOpacity 
+      <TouchableOpacity
         style={[styles.button, styles.nextBtn, !isRunning && styles.disabled]}
         onPress={handleNextDate}
         disabled={!isRunning}

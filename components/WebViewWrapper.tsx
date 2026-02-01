@@ -48,16 +48,7 @@ const WebViewWrapper = React.forwardRef<any, WebViewWrapperProps>((props, ref) =
               }
             }
           }}
-          sandbox={{
-            allow: [
-              'same-origin',
-              'scripts',
-              'forms',
-              'popups',
-              'top-navigation',
-              'modals',
-            ] as any,
-          }}
+          sandbox="allow-same-origin allow-scripts allow-forms allow-popups allow-top-navigation allow-modals"
         />
       </div>
     );
@@ -82,6 +73,9 @@ const WebViewWrapper = React.forwardRef<any, WebViewWrapperProps>((props, ref) =
       javaScriptEnabled={true}
       domStorageEnabled={true}
       cacheEnabled={true}
+      userAgent="Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36"
+      allowsBackForwardNavigationGestures={true}
+      applicationNameForUserAgent="PCareBot/1.0"
     />
   );
 });

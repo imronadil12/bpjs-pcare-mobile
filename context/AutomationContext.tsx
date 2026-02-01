@@ -26,6 +26,7 @@ interface AutomationContextType {
   setDateIndex: (index: number) => void;
   isRunning: boolean;
   isPaused: boolean;
+  isLoading: boolean;
   addDate: (date: string, goal: number | string) => void;
   removeDate: (index: number) => void;
   startAutomation: () => void;
@@ -33,6 +34,7 @@ interface AutomationContextType {
   resumeAutomation: () => void;
   stopAutomation: () => void;
   nextDate: () => void;
+  clearSettings: () => Promise<void>;
 }
 
 export const AutomationContext = createContext<AutomationContextType | undefined>(undefined);
@@ -52,6 +54,7 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
   const [dateIndex, setDateIndex] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
   // Load saved state from AsyncStorage
   useEffect(() => {
@@ -82,8 +85,12 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
           setProgress(data.progress);
           setStatus(data.progress.status || 'Idle');
         }
+        
+        console.log('✓ Settings loaded from storage');
       } catch (error) {
         console.error('Failed to load state:', error);
+      } finally {
+        setIsLoading(false);
       }
     };
 
@@ -181,6 +188,36 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
     setProgress({ done, total });
   }, []);
 
+  const clearSettings = useCallback(async () => {
+    try {
+      await AsyncStorage.multiRemove([
+        'tanggal',
+        'dateGoals',
+        'numbers',
+        'delayMs',
+        'progress',
+        'dateIndex',
+        'startIndex',
+      ]);
+      
+      // Reset state
+      setDates([]);
+      setDateGoals({});
+      setNumbers([]);
+      setDelayMs(1200);
+      setStartIndex(0);
+      setStatus('Idle');
+      setProgress({ done: 0, total: 0 });
+      setDateIndex(0);
+      setIsRunning(false);
+      setIsPaused(false);
+      
+      console.log('✓ Settings cleared');
+    } catch (error) {
+      console.error('Failed to clear settings:', error);
+    }
+  }, []);
+
   const value: AutomationContextType = {
     dates,
     setDates,
@@ -201,6 +238,7 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
     setDateIndex,
     isRunning,
     isPaused,
+    isLoading,
     addDate,
     removeDate,
     startAutomation,
@@ -208,6 +246,7 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
     resumeAutomation,
     stopAutomation,
     nextDate,
+    clearSettings,
   };
 
   return (

@@ -4,7 +4,13 @@ import { AutomationContext } from '@/context/AutomationContext';
 import { getProgressPercentage } from '@/utils/automationUtils';
 
 const ProgressDisplay = () => {
-  const { status, progress, dates, dateIndex } = useContext(AutomationContext);
+  const context = useContext(AutomationContext);
+  
+  if (!context) {
+    return null;
+  }
+
+  const { status, progress, dates, dateIndex } = context;
   const currentDate = dates[dateIndex] || '-';
   const progressPercentage = getProgressPercentage(progress.done, progress.total);
 

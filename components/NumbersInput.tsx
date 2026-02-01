@@ -4,7 +4,13 @@ import { AutomationContext } from '@/context/AutomationContext';
 import { parseNumbers, loadFromUrl } from '@/utils/automationUtils';
 
 const NumbersInput = () => {
-  const { numbers, setNumbersFromText } = useContext(AutomationContext);
+  const context = useContext(AutomationContext);
+  
+  if (!context) {
+    return null;
+  }
+
+  const { numbers, setNumbersFromText } = context;
   const [inputText, setInputText] = useState(numbers.join('\n'));
   const [urlInput, setUrlInput] = useState('');
   const [loading, setLoading] = useState(false);

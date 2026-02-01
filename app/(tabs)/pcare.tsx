@@ -7,9 +7,10 @@ import {
   Dimensions,
   Alert,
   TouchableOpacity,
-  TextInput,
   ActivityIndicator,
+  useWindowDimensions,
 } from 'react-native';
+import { WebView } from 'react-native-webview';
 import { AutomationContext } from '@/context/AutomationContext';
 import WebViewWrapper from '@/components/WebViewWrapper';
 import DatePicker from '@/components/DatePicker';
@@ -20,11 +21,30 @@ import ControlButtons from '@/components/ControlButtons';
 import { automationScript } from '@/utils/automationUtils';
 
 export default function PCareScreen() {
-  const webViewRef = useRef(null);
-  const { updateProgress, setStatus, numbers, dates, delayMs, startIndex, dateIndex, isRunning } = useContext(AutomationContext);
+  const webViewRef = useRef<WebView>(null);
+  const context = useContext(AutomationContext);
   const [loading, setLoading] = useState(false);
-  const [url, setUrl] = useState('https://pcarejkn.bpjs-kesehatan.go.id/');
   const [showControls, setShowControls] = useState(false);
+  const PCARE_URL = 'https://pcarejkn.bpjs-kesehatan.go.id/';
+  const { width, height } = useWindowDimensions();
+  const isTablet = width > 768;
+  
+  if (!context) {
+    return <Text>Loading...</Text>;
+  }
+
+  const { updateProgress, setStatus, numbers, dates, delayMs, startIndex, dateIndex, isRunning, isLoading } = context;
+  const isSplitView = isTablet && showControls;
+
+  // Show loading while settings are being restored
+  if (isLoading) {
+    return (
+      <View style={styles.centerContainer}>
+        <ActivityIndicator size="large" color="#2563eb" />
+        <Text style={styles.loadingLabel}>Loading settings...</Text>
+      </View>
+    );
+  }
 
   const handleWebViewMessage = (event: any) => {
     try {
@@ -40,121 +60,110 @@ export default function PCareScreen() {
   };
 
   const goToEntryPage = () => {
-    setUrl('https://pcarejkn.bpjs-kesehatan.go.id/eclaim/EntriDaftarDokkel');
+    if (webViewRef.current) {
+      (webViewRef.current as any).injectJavaScript?.(`window.location.href = '${PCARE_URL}eclaim/EntriDaftarDokkel';`);
+    }
   };
 
   const goToLogin = () => {
-    setUrl('https://pcarejkn.bpjs-kesehatan.go.id/');
+    if (webViewRef.current) {
+      (webViewRef.current as any).injectJavaScript?.(`window.location.href = '${PCARE_URL}';`);
+    }
   };
 
   return (
     <View style={styles.container}>
-      {/* Browser Address Bar */}
-      <View style={styles.addressBar}>
-        <TextInput
-          style={styles.addressInput}
-          value={url}
-          onChangeText={setUrl}
-          placeholder="Enter URL"
-          editable={!isRunning}
-        />
-        <TouchableOpacity 
-          style={[styles.goButton, isRunning && { opacity: 0.5 }]}
-          onPress={() => {
-            if (webViewRef.current) {
-              (webViewRef.current as any).reload?.();
-            }
-          }}
-          disabled={isRunning}
-        >
-          <Text style={styles.goButtonText}>🔄</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Quick Navigation Buttons */}
-      <View style={styles.navButtons}>
+      <View style={[styles.navButtons, isTablet && styles.navButtonsTablet]}>
         <TouchableOpacity 
-          style={[styles.navBtn, styles.loginBtn]}
+          style={[styles.navBtn, styles.loginBtn, isTablet && styles.navBtnTablet]}
           onPress={goToLogin}
         >
-          <Text style={styles.navBtnText}>🔐 Login</Text>
+          <Text style={[styles.navBtnText, isTablet && styles.navBtnTextTablet]}>🔐 Login</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.navBtn, styles.entryBtn]}
+          style={[styles.navBtn, styles.entryBtn, isTablet && styles.navBtnTablet]}
           onPress={goToEntryPage}
         >
-          <Text style={styles.navBtnText}>📝 Entry Form</Text>
+          <Text style={[styles.navBtnText, isTablet && styles.navBtnTextTablet]}>📝 Entry Form</Text>
         </TouchableOpacity>
         <TouchableOpacity 
-          style={[styles.navBtn, styles.toggleBtn]}
+          style={[styles.navBtn, styles.toggleBtn, isTablet && styles.navBtnTablet]}
           onPress={() => setShowControls(!showControls)}
         >
-          <Text style={styles.navBtnText}>{showControls ? '🤖 Hide' : '🤖 Bot'}</Text>
+          <Text style={[styles.navBtnText, isTablet && styles.navBtnTextTablet]}>{showControls ? '🤖 Hide' : '🤖 Bot'}</Text>
         </TouchableOpacity>
       </View>
 
-      {/* WebView - Main Content */}
-      <View style={styles.webviewContainer}>
-        {loading && (
-          <View style={styles.loadingOverlay}>
-            <ActivityIndicator size="large" color="#2563eb" />
-            <Text style={styles.loadingText}>Loading...</Text>
-          </View>
+      {/* Main Content Area */}
+      <View style={[styles.mainContent, isSplitView && styles.splitView]}>
+        {/* WebView - Main Content */}
+        <View style={[styles.webviewContainer, isSplitView && styles.webviewSplit]}>
+          {loading && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color="#2563eb" />
+              <Text style={styles.loadingText}>Loading...</Text>
+            </View>
+          )}
+          <WebViewWrapper
+            ref={webViewRef}
+            url={PCARE_URL}
+            style={styles.webview}
+            injectedJavaScript={automationScript}
+            onMessage={handleWebViewMessage}
+            onLoadStart={() => setLoading(true)}
+            onLoadEnd={() => setLoading(false)}
+          />
+        </View>
+
+        {/* Bot Controls - Collapsible or Side Panel */}
+        {showControls && (
+          <ScrollView style={[styles.controlsPanel, isSplitView && styles.controlsPanelTablet]}>
+            <View style={styles.controlsHeader}>
+              <Text style={styles.controlsTitle}>🤖 Bot Controls</Text>
+              {!isSplitView && (
+                <TouchableOpacity onPress={() => setShowControls(false)}>
+                  <Text style={styles.closeBtn}>✕</Text>
+                </TouchableOpacity>
+              )}
+            </View>
+
+            <View style={styles.controlSection}>
+              <Text style={styles.sectionLabel}>📅 Tanggal (Date)</Text>
+              <DatePicker />
+            </View>
+
+            <View style={styles.controlSection}>
+              <Text style={styles.sectionLabel}>📝 Numbers to Enter</Text>
+              <NumbersInput />
+            </View>
+
+            <View style={styles.controlSection}>
+              <Text style={styles.sectionLabel}>⚙️ Settings</Text>
+              <Settings />
+            </View>
+
+            <View style={styles.controlSection}>
+              <Text style={styles.sectionLabel}>📊 Progress</Text>
+              <ProgressDisplay />
+            </View>
+
+            <View style={styles.controlSection}>
+              <ControlButtons webViewRef={webViewRef} />
+            </View>
+
+            {!isSplitView && (
+              <Text style={styles.instructions}>
+                1️⃣ Login manually using the browser above{'\n'}
+                2️⃣ Navigate to Entry Form{'\n'}
+                3️⃣ Add dates and goals{'\n'}
+                4️⃣ Add numbers to enter{'\n'}
+                5️⃣ Click Start to begin automation
+              </Text>
+            )}
+          </ScrollView>
         )}
-        <WebViewWrapper
-          ref={webViewRef}
-          url={url}
-          style={styles.webview}
-          injectedJavaScript={automationScript}
-          onMessage={handleWebViewMessage}
-          onLoadStart={() => setLoading(true)}
-          onLoadEnd={() => setLoading(false)}
-        />
       </View>
-
-      {/* Bot Controls - Collapsible */}
-      {showControls && (
-        <ScrollView style={styles.controlsPanel}>
-          <View style={styles.controlsHeader}>
-            <Text style={styles.controlsTitle}>🤖 Bot Controls</Text>
-            <TouchableOpacity onPress={() => setShowControls(false)}>
-              <Text style={styles.closeBtn}>✕</Text>
-            </TouchableOpacity>
-          </View>
-
-          <View style={styles.controlSection}>
-            <Text style={styles.sectionLabel}>📅 Tanggal (Date)</Text>
-            <DatePicker />
-          </View>
-
-          <View style={styles.controlSection}>
-            <Text style={styles.sectionLabel}>📝 Numbers to Enter</Text>
-            <NumbersInput />
-          </View>
-
-          <View style={styles.controlSection}>
-            <Text style={styles.sectionLabel}>⚙️ Settings</Text>
-            <Settings />
-          </View>
-
-          <View style={styles.controlSection}>
-            <Text style={styles.sectionLabel}>📊 Progress</Text>
-            <ProgressDisplay />
-          </View>
-
-          <View style={styles.controlSection}>
-            <ControlButtons webViewRef={webViewRef} />
-          </View>
-
-          <Text style={styles.instructions}>
-            1️⃣ Login manually using the browser above{'\n'}
-            2️⃣ Navigate to Entry Form{'\n'}
-            3️⃣ Add dates and goals{'\n'}
-            4️⃣ Add numbers to enter{'\n'}
-            5️⃣ Click Start to begin automation
-          </Text>
-        </ScrollView>
-      )}
     </View>
   );
 }
@@ -164,36 +173,17 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: '#fff',
   },
-  addressBar: {
-    flexDirection: 'row',
-    backgroundColor: '#f0f0f0',
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    gap: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: '#ddd',
-  },
-  addressInput: {
+  centerContainer: {
     flex: 1,
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    paddingHorizontal: 8,
-    paddingVertical: 6,
-    fontSize: 12,
-    backgroundColor: '#fff',
-  },
-  goButton: {
-    borderWidth: 1,
-    borderColor: '#ccc',
-    borderRadius: 4,
-    paddingHorizontal: 10,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: '#e8f4f8',
+    backgroundColor: '#fff',
   },
-  goButtonText: {
-    fontSize: 18,
+  loadingLabel: {
+    marginTop: 12,
+    fontSize: 14,
+    color: '#2563eb',
+    fontWeight: '600',
   },
   navButtons: {
     flexDirection: 'row',
@@ -204,6 +194,11 @@ const styles = StyleSheet.create({
     borderBottomWidth: 1,
     borderBottomColor: '#eee',
   },
+  navButtonsTablet: {
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    gap: 12,
+  },
   navBtn: {
     flex: 1,
     paddingVertical: 8,
@@ -212,6 +207,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     borderWidth: 1,
+  },
+  navBtnTablet: {
+    paddingVertical: 12,
+    paddingHorizontal: 16,
   },
   loginBtn: {
     borderColor: '#2563eb',
@@ -230,9 +229,23 @@ const styles = StyleSheet.create({
     fontWeight: '600',
     color: '#333',
   },
+  navBtnTextTablet: {
+    fontSize: 13,
+  },
+  mainContent: {
+    flex: 1,
+  },
+  splitView: {
+    flexDirection: 'row',
+  },
   webviewContainer: {
     flex: 1,
     position: 'relative',
+  },
+  webviewSplit: {
+    flex: 1.5,
+    borderRightWidth: 1,
+    borderRightColor: '#eee',
   },
   webview: {
     flex: 1,
@@ -259,6 +272,14 @@ const styles = StyleSheet.create({
     borderTopWidth: 2,
     borderTopColor: '#8b5cf6',
     paddingBottom: 20,
+  },
+  controlsPanelTablet: {
+    maxHeight: 'none' as any,
+    flex: 1,
+    borderTopWidth: 0,
+    borderLeftWidth: 1,
+    borderLeftColor: '#8b5cf6',
+    paddingBottom: 0,
   },
   controlsHeader: {
     flexDirection: 'row',

@@ -1,9 +1,33 @@
 import React, { useContext } from 'react';
-import { View, Text, TextInput, StyleSheet } from 'react-native';
+import { View, Text, TextInput, TouchableOpacity, StyleSheet, Alert } from 'react-native';
 import { AutomationContext } from '@/context/AutomationContext';
 
 const Settings = () => {
-  const { delayMs, setDelayMs, startIndex, setStartIndex } = useContext(AutomationContext);
+  const context = useContext(AutomationContext);
+  
+  if (!context) {
+    return null;
+  }
+
+  const { delayMs, setDelayMs, startIndex, setStartIndex, clearSettings } = context;
+
+  const handleClearSettings = () => {
+    Alert.alert(
+      'Clear All Settings?',
+      'This will delete all saved numbers, dates, and settings. This action cannot be undone.',
+      [
+        { text: 'Cancel', onPress: () => {}, style: 'cancel' },
+        {
+          text: 'Clear',
+          onPress: async () => {
+            await clearSettings();
+            Alert.alert('Success', 'All settings have been cleared.');
+          },
+          style: 'destructive',
+        },
+      ]
+    );
+  };
 
   return (
     <View style={styles.container}>
@@ -28,6 +52,10 @@ const Settings = () => {
           keyboardType="number-pad"
         />
       </View>
+
+      <TouchableOpacity style={styles.clearBtn} onPress={handleClearSettings}>
+        <Text style={styles.clearBtnText}>🗑️ Clear All Settings</Text>
+      </TouchableOpacity>
     </View>
   );
 };
@@ -52,6 +80,22 @@ const styles = StyleSheet.create({
     borderRadius: 4,
     paddingHorizontal: 8,
     paddingVertical: 6,
+    fontSize: 12,
+  },
+  clearBtn: {
+    marginTop: 12,
+    paddingVertical: 10,
+    paddingHorizontal: 12,
+    backgroundColor: '#fee2e2',
+    borderWidth: 1,
+    borderColor: '#dc2626',
+    borderRadius: 4,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  clearBtnText: {
+    color: '#dc2626',
+    fontWeight: '600',
     fontSize: 12,
   },
 });
