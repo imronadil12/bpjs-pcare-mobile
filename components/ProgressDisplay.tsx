@@ -10,7 +10,7 @@ const ProgressDisplay = () => {
     return null;
   }
 
-  const { status, progress, dates, dateIndex } = context;
+  const { status, progress, dates, dateIndex, currentNumber } = context;
   const currentDate = dates[dateIndex] || '-';
   
   // Validate progress values
@@ -36,6 +36,11 @@ const ProgressDisplay = () => {
       <View style={styles.statusItem}>
         <Text style={styles.label}>Date:</Text>
         <Text style={styles.value}>{currentDate}</Text>
+      </View>
+
+      <View style={styles.statusItem}>
+        <Text style={styles.label}>Number:</Text>
+        <Text style={styles.value}>{currentNumber}</Text>
       </View>
 
       <View style={styles.statusItem}>

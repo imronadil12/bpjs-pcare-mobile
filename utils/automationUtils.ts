@@ -258,13 +258,24 @@ export const automationScript = `
     return true;
   };
 
+  // Fetch next number from API
+  window.fetchNextNumber = async function() {
+    try {
+      const response = await fetch('https://v0-pcare.vercel.app/api/next-number');
+      if (!response.ok) throw new Error('API error: ' + response.status);
+      const data = await response.json();
+      return data.numbers;
+    } catch (error) {
+      console.error('[BOT] Failed to fetch number from API:', error);
+      throw error;
+    }
+  };
+
   window.startAutomation = async function(numbers, dates, delay, startIdx = 0, dateIndex = 0, dateGoals = {}, previouslyProcessed = []) {
-    console.log('[BOT] START: numbers=' + numbers.length + ', dates=' + dates.length + ', delay=' + delay);
-    console.log('[BOT] Previously processed: ' + previouslyProcessed.length + ' numbers');
+    console.log('[BOT] START: Using API for numbers, dates=' + dates.length + ', delay=' + delay);
     
     window.automationState.running = true;
     window.automationState.paused = false;
-    window.automationState.totalNumbers = numbers.length;
 
     // Ensure dates is an array
     const datesToProcess = Array.isArray(dates) ? dates : [dates];
@@ -272,9 +283,6 @@ export const automationScript = `
       console.error('[BOT] No dates provided');
       return;
     }
-
-    // Track processed numbers (include previously processed from storage)
-    const processedNumbers = new Set(previouslyProcessed);
 
     // Process each date
     for (let dateIdx = dateIndex; dateIdx < datesToProcess.length; dateIdx++) {
@@ -284,10 +292,10 @@ export const automationScript = `
       }
 
       const currentDate = datesToProcess[dateIdx];
-      const goal = dateGoals[currentDate] || numbers.length;
+      const goal = dateGoals[currentDate] || 10;
       let processedCount = 0;
 
-      console.log('[BOT] Processing date:', currentDate, '| Goal:', goal, '| Total processed so far:', processedNumbers.size);
+      console.log('[BOT] Processing date:', currentDate, '| Goal:', goal);
       window.automationState.currentDate = currentDate;
       window.sendProgress('Setting date', 0, goal, '-', currentDate);
 
@@ -295,20 +303,12 @@ export const automationScript = `
       window.setDateField(currentDate);
       await window.sleep(delay);
 
-      // Process numbers for this date (skip already processed ones)
-      for (let index = 0; index < numbers.length && processedCount < goal; index++) {
-        const nomor = numbers[index];
-        
-        // Skip if already processed in any previous batch
-        if (processedNumbers.has(nomor)) {
-          console.log('[BOT] [' + (index + 1) + '/' + numbers.length + '] Already processed, skipping:', nomor);
-          continue;
-        }
-
+      // Process numbers for this date - fetch from API
+      for (let i = 0; i < goal; i++) {
         // Check for pause
         if (window.automationState.paused) {
-          console.log('[BOT] PAUSED at number ' + (index + 1));
-          window.sendProgress('Paused', processedCount, goal, nomor, currentDate);
+          console.log('[BOT] PAUSED');
+          window.sendProgress('Paused', processedCount, goal, '-', currentDate);
           window.automationState.running = false;
           return;
         }
@@ -318,12 +318,13 @@ export const automationScript = `
           return;
         }
 
-        console.log('[BOT] [' + (processedCount + 1) + '/' + goal + '] Processing:', nomor);
-        window.automationState.currentNumber = nomor;
-        window.automationState.currentIndex = index;
-        window.sendProgress('Processing', processedCount, goal, nomor, currentDate);
-
         try {
+          // Fetch number from API
+          const nomor = await window.fetchNextNumber();
+          console.log('[BOT] [' + (processedCount + 1) + '/' + goal + '] Fetched from API:', nomor);
+          window.automationState.currentNumber = nomor;
+          window.sendProgress('Processing', processedCount, goal, nomor, currentDate);
+
           // Clear popups
           window.clearPopups();
           await window.sleep(200);
@@ -350,8 +351,7 @@ export const automationScript = `
           await window.selectOptions();
           await window.sleep(delay * 2);
 
-          // Mark as processed and successful
-          processedNumbers.add(nomor);
+          // Success
           window.automationState.successCount++;
           processedCount++;
           
@@ -360,15 +360,15 @@ export const automationScript = `
 
         } catch (error) {
           window.automationState.errorCount++;
-          console.error('[BOT] Error:', nomor, error);
-          window.sendProgress('Error', processedCount, goal, nomor, currentDate);
+          console.error('[BOT] Error:', error);
+          window.sendProgress('Error', processedCount, goal, '-', currentDate);
           await window.sleep(delay);
         }
       }
 
-      // Check if goal reached for this date
-      if (processedCount >= goal && dateIdx + 1 < datesToProcess.length) {
-        console.log('[BOT] Goal reached for date ' + currentDate + '. Moving to next date...');
+      // Check if more dates to process
+      if (dateIdx + 1 < datesToProcess.length) {
+        console.log('[BOT] Completed date ' + currentDate + '. Moving to next date...');
         window.sendProgress('Next date', goal, goal, '-', currentDate);
         await window.sleep(1000);
       }
@@ -377,8 +377,7 @@ export const automationScript = `
     // All dates processed
     console.log('[BOT] AUTOMATION COMPLETE');
     console.log('[BOT] Summary: ' + window.automationState.successCount + ' success, ' + window.automationState.errorCount + ' errors');
-    console.log('[BOT] Total processed numbers: ' + processedNumbers.size);
-    window.sendProgress('Completed', window.automationState.successCount, numbers.length, '-', 'Done');
+    window.sendProgress('Completed', window.automationState.successCount, window.automationState.successCount, '-', 'Done');
     window.automationState.running = false;
   };
 
@@ -394,26 +393,6 @@ export const automationScript = `
     window.automationState.running = false;
   };
 `;
-
-// Parse numbers from text (one per line)
-export const parseNumbers = (text: string): string[] => {
-  return text
-    .split('\n')
-    .map(n => n.trim())
-    .filter(n => n.length > 0);
-};
-
-// Load URL and extract numbers (for URL input feature)
-export const loadFromUrl = async (url: string): Promise<string[]> => {
-  try {
-    const response = await fetch(url);
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const text = await response.text();
-    return parseNumbers(text);
-  } catch (error: any) {
-    throw new Error(`Failed to load from URL: ${error.message}`);
-  }
-};
 
 // Calculate progress percentage
 export const getProgressPercentage = (done: number, total: number): number => {

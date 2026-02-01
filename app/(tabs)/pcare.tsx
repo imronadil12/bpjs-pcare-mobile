@@ -146,13 +146,75 @@ export default function PCareScreen() {
         )}
       </View>
 
-      {/* Toggle Bot Controls Button */}
-      <TouchableOpacity
-        style={[styles.toggleBtn, showControls && styles.toggleBtnOpen]}
-        onPress={() => setShowControls(!showControls)}
-      >
-        <Text style={styles.toggleBtnIcon}>{showControls ? '✕' : '🤖'}</Text>
-      </TouchableOpacity>
+      {/* Floating Action Button with Progress */}
+      <View style={styles.fabContainer}>
+        {showControls && (
+          <View style={styles.fabPanel}>
+            <View style={styles.progressSection}>
+              <Text style={styles.progressLabel}>{status}</Text>
+              <View style={styles.progressBar}>
+                <View
+                  style={[
+                    styles.progressFill,
+                    {
+                      width: `${
+                        progress.total > 0 ? Math.round((progress.done / progress.total) * 100) : 0
+                      }%`,
+                    },
+                  ]}
+                />
+              </View>
+              <Text style={styles.progressText}>
+                {progress.done} / {progress.total}
+              </Text>
+            </View>
+
+            <View style={styles.fabButtonsRow}>
+              <TouchableOpacity
+                style={[styles.fabSmallBtn, styles.startBtn, isRunning && styles.disabledBtn]}
+                disabled={isRunning}
+                onPress={() => {
+                  if (context) {
+                    const processedArray = Array.from(context.processedNumbers);
+                    const inject = `
+                      window.startAutomation(
+                        ${JSON.stringify(context.numbers)},
+                        ${JSON.stringify(context.dates)},
+                        ${context.delayMs},
+                        0,
+                        0,
+                        ${JSON.stringify(context.dateGoals)},
+                        ${JSON.stringify(processedArray)}
+                      );
+                    `;
+                    webViewRef.current?.injectJavaScript(inject);
+                  }
+                }}
+              >
+                <Text style={styles.fabBtnIcon}>▶</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.fabSmallBtn, styles.stopBtn]}
+                onPress={() => {
+                  if (context) {
+                    const inject = `window.stopAutomation();`;
+                    webViewRef.current?.injectJavaScript(inject);
+                  }
+                }}
+              >
+                <Text style={styles.fabBtnIcon}>⏹</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        )}
+
+        <TouchableOpacity
+          style={[styles.fab, showControls && styles.fabOpen]}
+          onPress={() => setShowControls(!showControls)}
+        >
+          <Text style={styles.fabIcon}>{showControls ? '✕' : '🤖'}</Text>
+        </TouchableOpacity>
+      </View>
     </View>
   );
 }
@@ -266,10 +328,85 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 4,
   },
-  toggleBtn: {
+  // Floating Action Button Styles
+  fabContainer: {
     position: 'absolute',
     bottom: 20,
     right: 20,
+    zIndex: 100,
+    alignItems: 'flex-end',
+  } as any,
+  fabPanel: {
+    backgroundColor: '#fff',
+    borderRadius: 12,
+    padding: 16,
+    marginBottom: 12,
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.15,
+    shadowRadius: 8,
+    elevation: 8,
+    minWidth: 220,
+  },
+  progressSection: {
+    marginBottom: 12,
+  },
+  progressLabel: {
+    fontSize: 12,
+    fontWeight: '600',
+    color: '#1f2937',
+    marginBottom: 8,
+    textTransform: 'capitalize',
+  } as any,
+  progressBar: {
+    height: 6,
+    backgroundColor: '#e5e7eb',
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: 8,
+  } as any,
+  progressFill: {
+    height: '100%' as any,
+    backgroundColor: '#3b82f6',
+    borderRadius: 3,
+  },
+  progressText: {
+    fontSize: 11,
+    color: '#6b7280',
+    fontWeight: '500',
+  } as any,
+  fabButtonsRow: {
+    flexDirection: 'row',
+    gap: 8,
+    justifyContent: 'space-between',
+  } as any,
+  fabSmallBtn: {
+    flex: 1,
+    paddingVertical: 10,
+    borderRadius: 6,
+    alignItems: 'center',
+    justifyContent: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+  },
+  startBtn: {
+    backgroundColor: '#10b981',
+  },
+  stopBtn: {
+    backgroundColor: '#dc2626',
+  },
+  disabledBtn: {
+    opacity: 0.5,
+  },
+  fabBtnIcon: {
+    fontSize: 16,
+    fontWeight: '700',
+    color: '#fff',
+  } as any,
+  fab: {
     width: 60,
     height: 60,
     borderRadius: 30,
@@ -281,15 +418,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: 8,
     elevation: 12,
-    zIndex: 100,
   },
-  toggleBtnOpen: {
+  fabOpen: {
     backgroundColor: '#7c3aed',
   },
-  toggleBtnIcon: {
+  fabIcon: {
     fontSize: 28,
     color: '#fff',
     fontWeight: '700',
   } as any,
 });
-

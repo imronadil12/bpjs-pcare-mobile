@@ -1,17 +1,20 @@
 import React, { useContext, useRef, useState } from 'react';
 import { View, Text, TextInput, TouchableOpacity, StyleSheet, ScrollView, Alert } from 'react-native';
 import { AutomationContext } from '../context/AutomationContext';
-import { parseNumbers, loadFromUrl } from '../utils/automationUtils';
 
 const NumbersInput = () => {
-  const { numbers, setNumbersFromText } = useContext(AutomationContext);
-  const [inputText, setInputText] = useState(numbers.join('\n'));
+  const context = useContext(AutomationContext);
+  
+  if (!context) {
+    return null;
+  }
+
+  const [inputText, setInputText] = useState('');
   const [urlInput, setUrlInput] = useState('');
   const [loading, setLoading] = useState(false);
 
   const handleTextChange = (text) => {
     setInputText(text);
-    setNumbersFromText(text);
   };
 
   const handleLoadFromUrl = async () => {
@@ -22,12 +25,8 @@ const NumbersInput = () => {
 
     setLoading(true);
     try {
-      const loadedNumbers = await loadFromUrl(urlInput);
-      const text = loadedNumbers.join('\n');
-      setInputText(text);
-      setNumbersFromText(text);
+      Alert.alert('Info', 'Numbers are now fetched from API automatically');
       setUrlInput('');
-      Alert.alert('Success', `Loaded ${loadedNumbers.length} numbers`);
     } catch (error) {
       Alert.alert('Error', error.message);
     } finally {
@@ -36,13 +35,12 @@ const NumbersInput = () => {
   };
 
   const handleUploadFile = () => {
-    // This would be handled differently on mobile
-    Alert.alert('Info', 'File upload not yet implemented. Use URL option instead.');
+    Alert.alert('Info', 'File upload not needed - numbers come from API');
   };
 
   return (
     <View style={styles.container}>
-      <Text style={styles.label}>Nomor (1 per baris)</Text>
+      <Text style={styles.label}>Numbers are fetched from API automatically</Text>
       
       <TextInput
         style={styles.textarea}

@@ -99,25 +99,6 @@ export const automationScript = `
   };
 `;
 
-// Parse numbers from text (one per line)
-export const parseNumbers = (text) => {
-  return text
-    .split('\n')
-    .map(n => n.trim())
-    .filter(n => n.length > 0);
-};
-
-// Load file from URL
-export const loadFromUrl = async (url) => {
-  try {
-    const response = await fetch(url);
-    const text = await response.text();
-    return parseNumbers(text);
-  } catch (error) {
-    throw new Error(`Failed to load from URL: ${error.message}`);
-  }
-};
-
 // Format date for display
 export const formatDate = (dateStr) => {
   return dateStr; // Already in yyyy-mm-dd format

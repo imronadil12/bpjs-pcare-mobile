@@ -10,7 +10,6 @@ import {
 import { WebView } from 'react-native-webview';
 import { AutomationContext } from '../context/AutomationContext';
 import DatePicker from '../components/DatePicker';
-import NumbersInput from '../components/NumbersInput';
 import Settings from '../components/Settings';
 import ProgressDisplay from '../components/ProgressDisplay';
 import ControlButtons from '../components/ControlButtons';
@@ -46,10 +45,6 @@ const HomeScreen = () => {
 
         <View style={styles.section}>
           <DatePicker />
-        </View>
-
-        <View style={styles.section}>
-          <NumbersInput />
         </View>
 
         <View style={styles.section}>
