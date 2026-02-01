@@ -24,6 +24,13 @@ export default function TabLayout() {
         }}
       />
       <Tabs.Screen
+        name="pcare"
+        options={{
+          title: 'PCARE',
+          tabBarIcon: ({ color }) => <IconSymbol size={28} name="robot.fill" color={color} />,
+        }}
+      />
+      <Tabs.Screen
         name="explore"
         options={{
           title: 'Explore',
