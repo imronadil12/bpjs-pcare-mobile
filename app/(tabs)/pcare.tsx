@@ -33,7 +33,7 @@ export default function PCareScreen() {
     return <Text>Loading...</Text>;
   }
 
-  const { updateProgress, setStatus, numbers, dates, delayMs, startIndex, dateIndex, isRunning, isLoading } = context;
+  const { updateProgress, setStatus, numbers, dates, delayMs, startIndex, dateIndex, isRunning, isLoading, progress, status } = context;
   const isSplitView = isTablet && showControls;
 
   // Show loading while settings are being restored
@@ -59,42 +59,23 @@ export default function PCareScreen() {
     }
   };
 
-  const goToEntryPage = () => {
+  // Auto-navigate to entry form on load
+  const handleWebViewLoadEnd = () => {
+    setLoading(false);
     if (webViewRef.current) {
-      (webViewRef.current as any).injectJavaScript?.(`window.location.href = '${PCARE_URL}eclaim/EntriDaftarDokkel';`);
-    }
-  };
-
-  const goToLogin = () => {
-    if (webViewRef.current) {
-      (webViewRef.current as any).injectJavaScript?.(`window.location.href = '${PCARE_URL}';`);
+      (webViewRef.current as any).injectJavaScript?.(`
+        if (window.location.href.includes('EntriDaftarDokkel')) {
+          console.log('[BOT] Already on entry form');
+        } else {
+          console.log('[BOT] Navigating to entry form');
+          window.location.href = '${PCARE_URL}eclaim/EntriDaftarDokkel';
+        }
+      `);
     }
   };
 
   return (
     <View style={styles.container}>
-      {/* Quick Navigation Buttons */}
-      <View style={[styles.navButtons, isTablet && styles.navButtonsTablet]}>
-        <TouchableOpacity 
-          style={[styles.navBtn, styles.loginBtn, isTablet && styles.navBtnTablet]}
-          onPress={goToLogin}
-        >
-          <Text style={[styles.navBtnText, isTablet && styles.navBtnTextTablet]}>🔐 Login</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.navBtn, styles.entryBtn, isTablet && styles.navBtnTablet]}
-          onPress={goToEntryPage}
-        >
-          <Text style={[styles.navBtnText, isTablet && styles.navBtnTextTablet]}>📝 Entry Form</Text>
-        </TouchableOpacity>
-        <TouchableOpacity 
-          style={[styles.navBtn, styles.toggleBtn, isTablet && styles.navBtnTablet]}
-          onPress={() => setShowControls(!showControls)}
-        >
-          <Text style={[styles.navBtnText, isTablet && styles.navBtnTextTablet]}>{showControls ? '🤖 Hide' : '🤖 Bot'}</Text>
-        </TouchableOpacity>
-      </View>
-
       {/* Main Content Area */}
       <View style={[styles.mainContent, isSplitView && styles.splitView]}>
         {/* WebView - Main Content */}
@@ -112,7 +93,7 @@ export default function PCareScreen() {
             injectedJavaScript={automationScript}
             onMessage={handleWebViewMessage}
             onLoadStart={() => setLoading(true)}
-            onLoadEnd={() => setLoading(false)}
+            onLoadEnd={handleWebViewLoadEnd}
           />
         </View>
 
@@ -164,6 +145,14 @@ export default function PCareScreen() {
           </ScrollView>
         )}
       </View>
+
+      {/* Toggle Bot Controls Button */}
+      <TouchableOpacity
+        style={[styles.toggleBtn, showControls && styles.toggleBtnOpen]}
+        onPress={() => setShowControls(!showControls)}
+      >
+        <Text style={styles.toggleBtnIcon}>{showControls ? '✕' : '🤖'}</Text>
+      </TouchableOpacity>
     </View>
   );
 }
@@ -184,53 +173,6 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: '#2563eb',
     fontWeight: '600',
-  },
-  navButtons: {
-    flexDirection: 'row',
-    gap: 6,
-    paddingHorizontal: 8,
-    paddingVertical: 8,
-    backgroundColor: '#fafafa',
-    borderBottomWidth: 1,
-    borderBottomColor: '#eee',
-  },
-  navButtonsTablet: {
-    paddingHorizontal: 16,
-    paddingVertical: 12,
-    gap: 12,
-  },
-  navBtn: {
-    flex: 1,
-    paddingVertical: 8,
-    paddingHorizontal: 10,
-    borderRadius: 4,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderWidth: 1,
-  },
-  navBtnTablet: {
-    paddingVertical: 12,
-    paddingHorizontal: 16,
-  },
-  loginBtn: {
-    borderColor: '#2563eb',
-    backgroundColor: '#eff6ff',
-  },
-  entryBtn: {
-    borderColor: '#10b981',
-    backgroundColor: '#f0fdf4',
-  },
-  toggleBtn: {
-    borderColor: '#8b5cf6',
-    backgroundColor: '#faf5ff',
-  },
-  navBtnText: {
-    fontSize: 11,
-    fontWeight: '600',
-    color: '#333',
-  },
-  navBtnTextTablet: {
-    fontSize: 13,
   },
   mainContent: {
     flex: 1,
@@ -324,4 +266,30 @@ const styles = StyleSheet.create({
     marginVertical: 8,
     borderRadius: 4,
   },
+  toggleBtn: {
+    position: 'absolute',
+    bottom: 20,
+    right: 20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: '#8b5cf6',
+    justifyContent: 'center',
+    alignItems: 'center',
+    shadowColor: '#000',
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 12,
+    zIndex: 100,
+  },
+  toggleBtnOpen: {
+    backgroundColor: '#7c3aed',
+  },
+  toggleBtnIcon: {
+    fontSize: 28,
+    color: '#fff',
+    fontWeight: '700',
+  } as any,
 });
+

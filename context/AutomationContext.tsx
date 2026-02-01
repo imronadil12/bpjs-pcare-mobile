@@ -11,13 +11,8 @@ interface AutomationContextType {
   setDates: (dates: string[]) => void;
   dateGoals: Record<string, number>;
   setDateGoals: (goals: Record<string, number>) => void;
-  numbers: string[];
-  setNumbers: (numbers: string[]) => void;
-  setNumbersFromText: (text: string) => void;
   delayMs: number;
   setDelayMs: (delay: number) => void;
-  startIndex: number;
-  setStartIndex: (index: number) => void;
   status: string;
   setStatus: (status: string) => void;
   progress: Progress;
@@ -46,9 +41,7 @@ interface AutomationProviderProps {
 export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children }) => {
   const [dates, setDates] = useState<string[]>([]);
   const [dateGoals, setDateGoals] = useState<Record<string, number>>({});
-  const [numbers, setNumbers] = useState<string[]>([]);
   const [delayMs, setDelayMs] = useState(1200);
-  const [startIndex, setStartIndex] = useState(0);
   const [status, setStatus] = useState('Idle');
   const [progress, setProgress] = useState<Progress>({ done: 0, total: 0 });
   const [dateIndex, setDateIndex] = useState(0);
@@ -63,11 +56,9 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
         const stored = await AsyncStorage.multiGet([
           'tanggal',
           'dateGoals',
-          'numbers',
           'delayMs',
           'progress',
           'dateIndex',
-          'startIndex',
         ]);
 
         const data: Record<string, any> = {};
@@ -77,10 +68,8 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
 
         if (Array.isArray(data.tanggal)) setDates(data.tanggal);
         if (data.dateGoals) setDateGoals(data.dateGoals);
-        if (Array.isArray(data.numbers)) setNumbers(data.numbers);
         if (data.delayMs) setDelayMs(data.delayMs);
         if (data.dateIndex) setDateIndex(data.dateIndex);
-        if (data.startIndex) setStartIndex(data.startIndex);
         if (data.progress) {
           setProgress(data.progress);
           setStatus(data.progress.status || 'Idle');
@@ -103,20 +92,18 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
       await AsyncStorage.multiSet([
         ['tanggal', JSON.stringify(dates)],
         ['dateGoals', JSON.stringify(dateGoals)],
-        ['numbers', JSON.stringify(numbers)],
         ['delayMs', JSON.stringify(delayMs)],
         ['progress', JSON.stringify(progress)],
         ['dateIndex', JSON.stringify(dateIndex)],
-        ['startIndex', JSON.stringify(startIndex)],
       ]);
     } catch (error) {
       console.error('Failed to save state:', error);
     }
-  }, [dates, dateGoals, numbers, delayMs, progress, dateIndex, startIndex]);
+  }, [dates, dateGoals, delayMs, progress, dateIndex]);
 
   useEffect(() => {
     saveState();
-  }, [dates, dateGoals, numbers, delayMs, progress, dateIndex, startIndex, saveState]);
+  }, [dates, dateGoals, delayMs, progress, dateIndex, saveState]);
 
   const addDate = useCallback((date: string, goal: number | string) => {
     if (!dates.includes(date)) {
@@ -134,25 +121,17 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
     setDateGoals(newGoals);
   }, [dates, dateGoals]);
 
-  const setNumbersFromText = useCallback((text: string) => {
-    const nums = text
-      .split('\n')
-      .map(n => n.trim())
-      .filter(n => n.length > 0);
-    setNumbers(nums);
-  }, []);
-
   const startAutomation = useCallback(() => {
-    if (numbers.length === 0 || dates.length === 0) {
-      setStatus('Error: Please add numbers and dates');
+    if (dates.length === 0) {
+      setStatus('Error: Please add dates and goals');
       return;
     }
     setIsRunning(true);
     setIsPaused(false);
-    setProgress({ done: startIndex, total: numbers.length });
+    setProgress({ done: 0, total: 1 });
     setStatus(`Running on ${dates[dateIndex] || dates[0]}`);
     setDateIndex(0);
-  }, [numbers, dates, dateIndex, startIndex]);
+  }, [dates, dateIndex]);
 
   const pauseAutomation = useCallback(() => {
     setIsPaused(true);
@@ -185,7 +164,10 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
   }, [dateIndex, dates, progress]);
 
   const updateProgress = useCallback((done: number, total: number) => {
-    setProgress({ done, total });
+    // Ensure done doesn't exceed total and both are valid numbers
+    const validDone = Math.max(0, Math.min(done || 0, total || 0));
+    const validTotal = Math.max(0, total || 0);
+    setProgress({ done: validDone, total: validTotal });
   }, []);
 
   const clearSettings = useCallback(async () => {
@@ -193,19 +175,15 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
       await AsyncStorage.multiRemove([
         'tanggal',
         'dateGoals',
-        'numbers',
         'delayMs',
         'progress',
         'dateIndex',
-        'startIndex',
       ]);
       
       // Reset state
       setDates([]);
       setDateGoals({});
-      setNumbers([]);
       setDelayMs(1200);
-      setStartIndex(0);
       setStatus('Idle');
       setProgress({ done: 0, total: 0 });
       setDateIndex(0);
@@ -223,13 +201,8 @@ export const AutomationProvider: React.FC<AutomationProviderProps> = ({ children
     setDates,
     dateGoals,
     setDateGoals,
-    numbers,
-    setNumbers,
-    setNumbersFromText,
     delayMs,
     setDelayMs,
-    startIndex,
-    setStartIndex,
     status,
     setStatus,
     progress,

@@ -19,24 +19,17 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
     pauseAutomation,
     resumeAutomation,
     stopAutomation,
-    nextDate,
     isRunning,
     isPaused,
-    numbers,
     dates,
     dateGoals,
     delayMs,
-    startIndex,
-    dateIndex
+    dateIndex,
   } = context;
 
   const handleStart = () => {
-    if (!numbers || numbers.length === 0) {
-      alert('Please add numbers first');
-      return;
-    }
     if (!dates || dates.length === 0) {
-      alert('Please add dates first');
+      alert('Please add dates and goals first');
       return;
     }
 
@@ -45,19 +38,21 @@ const ControlButtons: React.FC<ControlButtonsProps> = ({ webViewRef }) => {
     if (webViewRef?.current) {
       const script = `
         (function() {
-          console.log('[BOT] Starting automation with ' + ${JSON.stringify(numbers)}.length + ' numbers on ' + ${JSON.stringify(dates)}.length + ' dates');
+          console.log('[BOT] Starting automation on ' + ${JSON.stringify(dates)}.length + ' dates');
+          console.log('[BOT] Using API to fetch numbers on each iteration based on goals');
           if (typeof window.startAutomation !== 'function') {
             console.error('[BOT] ERROR: startAutomation function not found!');
             return;
           }
           setTimeout(() => {
             window.startAutomation(
-              ${JSON.stringify(numbers)},
+              ${JSON.stringify(dates)},
               ${JSON.stringify(dates)},
               ${delayMs},
-              ${startIndex},
+              0,
               ${dateIndex},
-              ${JSON.stringify(dateGoals)}
+              ${JSON.stringify(dateGoals)},
+              []
             );
           }, 100);
         })();

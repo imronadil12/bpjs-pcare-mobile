@@ -12,7 +12,11 @@ const ProgressDisplay = () => {
 
   const { status, progress, dates, dateIndex } = context;
   const currentDate = dates[dateIndex] || '-';
-  const progressPercentage = getProgressPercentage(progress.done, progress.total);
+  
+  // Validate progress values
+  const validDone = Math.max(0, progress.done || 0);
+  const validTotal = Math.max(0, progress.total || 0);
+  const progressPercentage = getProgressPercentage(validDone, validTotal);
 
   const getStatusColor = (status: string) => {
     if (status.includes('Running')) return styles.statusRunning;
@@ -36,7 +40,7 @@ const ProgressDisplay = () => {
 
       <View style={styles.statusItem}>
         <Text style={styles.label}>Progress:</Text>
-        <Text style={styles.value}>{progress.done} / {progress.total}</Text>
+        <Text style={styles.value}>{validDone} / {validTotal}</Text>
       </View>
 
       <View style={styles.progressBarContainer}>

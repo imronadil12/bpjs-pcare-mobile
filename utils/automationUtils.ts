@@ -258,8 +258,9 @@ export const automationScript = `
     return true;
   };
 
-  window.startAutomation = async function(numbers, dates, delay, startIdx = 0, dateIndex = 0, dateGoals = {}) {
+  window.startAutomation = async function(numbers, dates, delay, startIdx = 0, dateIndex = 0, dateGoals = {}, previouslyProcessed = []) {
     console.log('[BOT] START: numbers=' + numbers.length + ', dates=' + dates.length + ', delay=' + delay);
+    console.log('[BOT] Previously processed: ' + previouslyProcessed.length + ' numbers');
     
     window.automationState.running = true;
     window.automationState.paused = false;
@@ -272,6 +273,9 @@ export const automationScript = `
       return;
     }
 
+    // Track processed numbers (include previously processed from storage)
+    const processedNumbers = new Set(previouslyProcessed);
+
     // Process each date
     for (let dateIdx = dateIndex; dateIdx < datesToProcess.length; dateIdx++) {
       if (!window.automationState.running) {
@@ -281,9 +285,9 @@ export const automationScript = `
 
       const currentDate = datesToProcess[dateIdx];
       const goal = dateGoals[currentDate] || numbers.length;
-      let index = dateIdx === dateIndex ? startIdx : 0;
+      let processedCount = 0;
 
-      console.log('[BOT] Processing date:', currentDate, '| Goal:', goal, '| Start:', index);
+      console.log('[BOT] Processing date:', currentDate, '| Goal:', goal, '| Total processed so far:', processedNumbers.size);
       window.automationState.currentDate = currentDate;
       window.sendProgress('Setting date', 0, goal, '-', currentDate);
 
@@ -291,12 +295,20 @@ export const automationScript = `
       window.setDateField(currentDate);
       await window.sleep(delay);
 
-      // Process numbers for this date
-      for (; index < numbers.length && index < goal; index++) {
+      // Process numbers for this date (skip already processed ones)
+      for (let index = 0; index < numbers.length && processedCount < goal; index++) {
+        const nomor = numbers[index];
+        
+        // Skip if already processed in any previous batch
+        if (processedNumbers.has(nomor)) {
+          console.log('[BOT] [' + (index + 1) + '/' + numbers.length + '] Already processed, skipping:', nomor);
+          continue;
+        }
+
         // Check for pause
         if (window.automationState.paused) {
           console.log('[BOT] PAUSED at number ' + (index + 1));
-          window.sendProgress('Paused', index, goal, numbers[index], currentDate);
+          window.sendProgress('Paused', processedCount, goal, nomor, currentDate);
           window.automationState.running = false;
           return;
         }
@@ -306,11 +318,10 @@ export const automationScript = `
           return;
         }
 
-        const nomor = numbers[index];
-        console.log('[BOT] [' + (index + 1) + '/' + goal + '] Processing:', nomor);
+        console.log('[BOT] [' + (processedCount + 1) + '/' + goal + '] Processing:', nomor);
         window.automationState.currentNumber = nomor;
         window.automationState.currentIndex = index;
-        window.sendProgress('Processing', index, goal, nomor, currentDate);
+        window.sendProgress('Processing', processedCount, goal, nomor, currentDate);
 
         try {
           // Clear popups
@@ -339,21 +350,24 @@ export const automationScript = `
           await window.selectOptions();
           await window.sleep(delay * 2);
 
-          // Update success
+          // Mark as processed and successful
+          processedNumbers.add(nomor);
           window.automationState.successCount++;
-          console.log('[BOT] ✓ [' + (index + 1) + '/' + goal + '] Success:', nomor);
-          window.sendProgress('Success', index + 1, goal, nomor, currentDate);
+          processedCount++;
+          
+          console.log('[BOT] Success:', nomor);
+          window.sendProgress('Success', processedCount, goal, nomor, currentDate);
 
         } catch (error) {
           window.automationState.errorCount++;
-          console.error('[BOT] ✗ [' + (index + 1) + '/' + goal + '] Error:', nomor, error);
-          window.sendProgress('Error', index + 1, goal, nomor, currentDate);
+          console.error('[BOT] Error:', nomor, error);
+          window.sendProgress('Error', processedCount, goal, nomor, currentDate);
           await window.sleep(delay);
         }
       }
 
       // Check if goal reached for this date
-      if (index >= goal && dateIdx + 1 < datesToProcess.length) {
+      if (processedCount >= goal && dateIdx + 1 < datesToProcess.length) {
         console.log('[BOT] Goal reached for date ' + currentDate + '. Moving to next date...');
         window.sendProgress('Next date', goal, goal, '-', currentDate);
         await window.sleep(1000);
@@ -361,8 +375,9 @@ export const automationScript = `
     }
 
     // All dates processed
-    console.log('[BOT] ✓ AUTOMATION COMPLETE');
+    console.log('[BOT] AUTOMATION COMPLETE');
     console.log('[BOT] Summary: ' + window.automationState.successCount + ' success, ' + window.automationState.errorCount + ' errors');
+    console.log('[BOT] Total processed numbers: ' + processedNumbers.size);
     window.sendProgress('Completed', window.automationState.successCount, numbers.length, '-', 'Done');
     window.automationState.running = false;
   };

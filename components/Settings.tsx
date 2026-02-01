@@ -9,7 +9,7 @@ const Settings = () => {
     return null;
   }
 
-  const { delayMs, setDelayMs, startIndex, setStartIndex, clearSettings } = context;
+  const { delayMs, setDelayMs, clearSettings } = context;
 
   const handleClearSettings = () => {
     Alert.alert(
@@ -40,17 +40,7 @@ const Settings = () => {
           onChangeText={(text) => setDelayMs(parseInt(text, 10) || 1200)}
           keyboardType="number-pad"
         />
-      </View>
-
-      <View style={styles.settingGroup}>
-        <Text style={styles.label}>Start Index</Text>
-        <TextInput
-          style={styles.input}
-          placeholder="0"
-          value={startIndex.toString()}
-          onChangeText={(text) => setStartIndex(parseInt(text, 10) || 0)}
-          keyboardType="number-pad"
-        />
+        <Text style={styles.hint}>Time to wait between actions (milliseconds)</Text>
       </View>
 
       <TouchableOpacity style={styles.clearBtn} onPress={handleClearSettings}>
@@ -81,6 +71,11 @@ const styles = StyleSheet.create({
     paddingHorizontal: 8,
     paddingVertical: 6,
     fontSize: 12,
+  },
+  hint: {
+    fontSize: 11,
+    color: '#999',
+    marginTop: 4,
   },
   clearBtn: {
     marginTop: 12,
